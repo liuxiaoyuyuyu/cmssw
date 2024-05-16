@@ -739,7 +739,7 @@ void L1FPGATrackProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSe
     aTrack.setStubPtConsistency(
         StubPtConsistency::getConsistency(aTrack, theTrackerGeom, tTopo, settings_.bfield(), settings_.nHelixPar()));
 
-    // set TTTrack word
+    // set TTTrack word first to allow Track Quality MVA to read variables:
     aTrack.setTrackWordBits();
 
     if (trackQuality_) {
@@ -751,6 +751,8 @@ void L1FPGATrackProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSe
     //      trackQualityModel_->setBonusFeatures(hph.bonusFeatures());
     //    }
 
+    // set TTTrack word
+    aTrack.setTrackWordBits();
     // test track word
     //aTrack.testTrackWordBits();
 

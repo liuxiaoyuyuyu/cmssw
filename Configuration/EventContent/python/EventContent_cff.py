@@ -185,6 +185,30 @@ approxSiStripClusters.toModify(RAWEventContent,
                               ])
 
 #
+# HLTSCOUT Data Tier definition
+#
+#
+HLTSCOUTEventContent = cms.PSet(
+    outputCommands = cms.untracked.vstring('drop *'),
+    splitLevel = cms.untracked.int32(0),
+    compressionAlgorithm=cms.untracked.string("LZMA"),
+    compressionLevel=cms.untracked.int32(4)
+)
+HLTSCOUTEventContent.outputCommands.extend(HLTriggerRAW.outputCommands)
+
+#
+# L1SCOUT Data Tier definition
+#
+#
+L1SCOUTEventContent = cms.PSet(
+    outputCommands = cms.untracked.vstring('drop *'),
+    splitLevel = cms.untracked.int32(0),
+    compressionAlgorithm=cms.untracked.string("LZMA"),
+    compressionLevel=cms.untracked.int32(4)
+)
+L1SCOUTEventContent.outputCommands.extend(L1TriggerRAW.outputCommands)
+
+#
 #
 # HLTONLY Data Tier definition
 #
@@ -233,6 +257,7 @@ RECOEventContent.outputCommands.extend(CommonEventContent.outputCommands)
 
 from Configuration.Eras.Modifier_ctpps_cff import ctpps
 from Configuration.Eras.Modifier_phase2_hgcal_cff import phase2_hgcal
+from Configuration.Eras.Modifier_phase2_common_cff import phase2_common
 from Configuration.Eras.Modifier_phase2_tracker_cff import phase2_tracker
 from Configuration.Eras.Modifier_phase2_muon_cff import phase2_muon
 from Configuration.Eras.Modifier_phase2_timing_layer_cff import phase2_timing_layer
@@ -651,6 +676,12 @@ phase2_tracker.toModify(FEVTDEBUGHLTEventContent,
                             'keep *_hltPhase2PixelTracks_*_*',
                             'keep *_hltPhase2PixelVertices_*_*'
                         ])
+
+phase2_common.toModify(FEVTDEBUGHLTEventContent,
+                       outputCommands = FEVTDEBUGHLTEventContent.outputCommands+[
+                           'keep *_hltEgammaGsfTracksL1Seeded_*_*',
+                       ])
+
 phase2_muon.toModify(FEVTDEBUGHLTEventContent, 
     outputCommands = FEVTDEBUGHLTEventContent.outputCommands + ['keep recoMuons_muons1stStep_*_*'])
 
@@ -945,3 +976,4 @@ for _entry in [FEVTDEBUGHLTEventContent,FEVTDEBUGEventContent,RECOSIMEventConten
     fastSim.toModify(_entry, outputCommands = _entry.outputCommands + fastSimEC.dropSimDigis)
 for _entry in [MINIAODEventContent, MINIAODSIMEventContent]:
     fastSim.toModify(_entry, outputCommands = _entry.outputCommands + fastSimEC.dropPatTrigger)
+

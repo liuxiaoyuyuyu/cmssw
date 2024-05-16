@@ -175,6 +175,8 @@ def _appendPhase2Digis(obj):
         'keep *_l1tHGCalBackEndLayer2Producer_*_*',
         'keep *_l1tHGCalTowerMapProducer_*_*',
         'keep *_l1tHGCalTowerProducer_*_*',
+        'keep *_l1tHGCalEnergySplitTowerMapProducer_*_*',
+        'keep *_l1tHGCalEnergySplitTowerProducer_*_*',
         'keep *_l1tEGammaClusterEmuProducer_*_*',
         'keep *_l1tVertexFinder_*_*',
         'keep *_l1tVertexFinderEmulator_*_*',
@@ -188,6 +190,7 @@ def _appendPhase2Digis(obj):
         'keep *_l1tTrackerEmuEtMiss_*_*',
         'keep *_l1tTrackerEmuHTMiss_*_*',
         'keep *_l1tTrackerEmuHTMissExtended_*_*',
+        'keep *_l1tTrackTripletEmulation_*_*',
         'keep *_l1tTowerCalibration_*_*',
         'keep *_l1tCaloJet_*_*',
         'keep *_l1tCaloJetHTT_*_*',
@@ -227,6 +230,8 @@ def _appendPhase2Digis(obj):
         'keep *_l1tHPSPFTauProducer_*_*',
         'keep *_l1tBJetProducerPuppi_*_*',
         'keep *_l1tBJetProducerPuppiCorrectedEmulator_*_*',
+        'keep *_l1tTOoLLiPProducer_*_*',
+        'keep *_l1tTOoLLiPProducerCorrectedEmulator_*_*',
         'keep *_TTStubsFromPhase2TrackerDigis_*_*',
         'keep *_TTClustersFromPhase2TrackerDigis_*_*',
         'keep *_l1tTTTracksFromExtendedTrackletEmulation_*_*',
@@ -235,6 +240,7 @@ def _appendPhase2Digis(obj):
         'keep *_l1tTkMuonsGmt_*_*',
         'keep *_l1tSAMuonsGmt_*_*',
         'keep *_l1tTkMuonsGmtLowPtFix_*_*', # in the long run this should be removed, but these fix objects will be used for now.
+	'keep *_l1tPhase2L1CaloEGammaEmulator_*_*',
         ]
     obj.outputCommands += l1Phase2Digis
 
