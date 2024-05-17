@@ -1,0 +1,62 @@
+#ifndef usercode_PrimaryVertexAnalyzer_VertexTimeAlgorithmADEGA_h
+#define usercode_PrimaryVertexAnalyzer_VertexTimeAlgorithmADEGA_h
+
+#include "VertexTimeAlgorithmBase.h"
+
+#include "FWCore/Utilities/interface/EDGetToken.h"
+#include "DataFormats/Common/interface/ValueMap.h"
+
+class VertexTimeAlgorithmADEGA : public VertexTimeAlgorithmBase {
+public:
+  VertexTimeAlgorithmADEGA(const edm::ParameterSet& conf, edm::ConsumesCollector& iC);
+  ~VertexTimeAlgorithmADEGA() override = default;
+
+  static void fillPSetDescription(edm::ParameterSetDescription& iDesc);
+
+  void setEvent(edm::Event& iEvent, edm::EventSetup const& iSetup) override;
+
+  bool vertexTime(float& vtxTime, float& vtxTimeError, TransientVertex const& vtx) const override;
+
+protected:
+  struct TrackInfo {
+    double weight[3];
+    double trkTimeErrorHyp[3];
+    double trkTimeHyp[3];
+  };
+
+  
+  double solveVertexTime(std::vector<std::vector<double>>& trackvector);
+  double calcChi2(std::vector<std::vector<double>>& trackvector,double tv);
+
+  edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDTimeToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDTimeErrorToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDTimeQualityToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDTofPiToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDTofKToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDTofPToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDSigmaTofPiToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDSigmaTofKToken_;
+  edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDSigmaTofPToken_;
+
+  double const minTrackVtxWeight_;
+  double const minTrackTimeQuality_;
+  double const probPion_;
+  double const probKaon_;
+  double const probProton_;
+  double const Tstart_;
+  double const coolingFactor_;
+
+  int const populationSize_;
+
+  edm::ValueMap<float> trackMTDTimes_;
+  edm::ValueMap<float> trackMTDTimeErrors_;
+  edm::ValueMap<float> trackMTDTimeQualities_;
+  edm::ValueMap<float> trackMTDTofPi_;
+  edm::ValueMap<float> trackMTDTofK_;
+  edm::ValueMap<float> trackMTDTofP_;
+  edm::ValueMap<float> trackMTDSigmaTofPi_;
+  edm::ValueMap<float> trackMTDSigmaTofK_;
+  edm::ValueMap<float> trackMTDSigmaTofP_;
+};
+
+#endif
