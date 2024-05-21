@@ -5,7 +5,9 @@
 
 #include "FWCore/Utilities/interface/EDGetToken.h"
 #include "DataFormats/Common/interface/ValueMap.h"
+class TRandom3;
 
+using namespace std;
 class VertexTimeAlgorithmADEGA : public VertexTimeAlgorithmBase {
 public:
   VertexTimeAlgorithmADEGA(const edm::ParameterSet& conf, edm::ConsumesCollector& iC);
@@ -20,13 +22,12 @@ public:
 protected:
   struct TrackInfo {
     double weight[3];
-    double trkTimeErrorHyp[3];
+    double trkTimeErrorHyp[3];//not useful after modifying "weight" 
     double trkTimeHyp[3];
   };
 
-  
-  double solveVertexTime(std::vector<std::vector<double>>& trackvector);
-  double calcChi2(std::vector<std::vector<double>>& trackvector,double tv);
+  void gen3Id(int (&ids)[3]);
+  int getInRange(int pid);
 
   edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDTimeToken_;
   edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDTimeErrorToken_;
@@ -47,6 +48,7 @@ protected:
   double const coolingFactor_;
 
   int const populationSize_;
+  int const Nm_;
 
   edm::ValueMap<float> trackMTDTimes_;
   edm::ValueMap<float> trackMTDTimeErrors_;

@@ -5,6 +5,9 @@
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "vdt/vdtMath.h"
+#include "TRandom3.h"
+#include <Math/SVector.h>
+#include <Math/SMatrix.h>
 
 #include "RecoVertex/PrimaryVertexProducer/interface/VertexTimeAlgorithmADEGA.h"
 
@@ -13,6 +16,8 @@
 #else
 #define LOG LogDebug("VertexTimeAlgorithmADEGA")
 #endif
+
+using namespace std;
 
 VertexTimeAlgorithmADEGA::VertexTimeAlgorithmADEGA(edm::ParameterSet const& iConfig,
                                                                    edm::ConsumesCollector& iCC)
@@ -33,7 +38,8 @@ VertexTimeAlgorithmADEGA::VertexTimeAlgorithmADEGA(edm::ParameterSet const& iCon
       probProton_(iConfig.getParameter<double>("probProton")),
       Tstart_(iConfig.getParameter<double>("Tstart")),
       coolingFactor_(iConfig.getParameter<double>("coolingFactor")),
-      populationSize_(15) {}
+      populationSize_(15),
+      Nm_(3){}
       
 
 void VertexTimeAlgorithmADEGA::fillPSetDescription(edm::ParameterSetDescription& iDesc) {
@@ -89,7 +95,12 @@ bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
     return false;
   }
 
-  std::vector<TrackInfo> v_trackInfo;
+  auto const vtxTime_init = vtxTime;
+  auto const vtxTimeError_init = vtxTimeError;
+
+  TRandom3 mRan(123);//fix the random seed
+
+  vector<TrackInfo> v_trackInfo;
   v_trackInfo.reserve(vtx.originalTracks().size());
 
   //Loop over the tracks associated with the vertex
@@ -128,46 +139,108 @@ bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
         LOG << "vertexTimeFromTracks:     track"
             << " pt=" << trk.track().pt() << " eta=" << trk.track().eta() << " phi=" << trk.track().phi()
             << " vtxWeight=" << trkWeight << " time=" << trkTime << " timeError=" << trkTimeError
-            << " timeQuality=" << trkTimeQuality << " timeHyp[pion]=" << trkInfo.trkTimeHyp[0]
-            << " timeHyp[kaon]=" << trkInfo.trkTimeHyp[1] << " timeHyp[proton]=" << trkInfo.trkTimeHyp[2];
+            << " timeQuality=" << trkTimeQuality << " timeHyp[pion]=" << trkInfo.trkTimeHyp[0] << " +/- "
+            << trkInfo.trkTimeErrorHyp[0] << " timeHyp[kaon]=" << trkInfo.trkTimeHyp[1] << " +/- "
+            << trkInfo.trkTimeErrorHyp[1] << " timeHyp[proton]=" << trkInfo.trkTimeHyp[2] << " +/- "
+            << trkInfo.trkTimeErrorHyp[2];
       }
     }
   }//End looping over tracks
   
-  int Ntrks=vtx.originalTracks().size();
+  //----------Initiate the population of solution vectors----------
+  int const Ntrks=vtx.originalTracks().size();
+  
+  //Add protection for population<=Nm^Ntrks, where Nm is the possible number of particle spieces.
+  if(populationSize_>pow(Nm_,Ntrks)){
+    LOG <<"Population size larger than Nm_^(Ntrks)";
+    return false;
+  }
 
-  //initiate a population of mass vectors 
-  std::vector<int> population[populationSize_];
-  for(int i=0;i<populationSize_;i++){
-    population[i].reserve(Ntrks);
+  typedef ROOT::Math::SVector<int, Ntrks> pidVector;
+  pidVector populationVector[populationSize_];
+
+  pidVector massTracker;//vector initiated to zeros by default
+  int count=0;
+  while(count<populationSize_){
     for(int j=0;j<Ntrks;j++){
-      int  //random int in [0,2]
-      population[i].push_back();
+      int tmp=mRan.Integer(Nm_);//random integer in [0,2]
+      populationVector[count][j]=tmp;
+      if(count!=0&&massTracker[j]==0){
+        if(populationVector[count][j]!=populationVector[count-1][j]){
+          massTracker[j]=1;
+        }
+      }
     }
+    //make sure all population members are unique.
+    if(count!=0){
+      for(int k=count-1;k>=0;k--){
+        if(populationVector[count]==populationVector[k]){
+          count--;
+          break;
+        }
+      }
+    }
+    //make sure at least two different masses per track;
+    //only need to check and update the last vector in the population.
+    if(count==populationSize_-1){
+      if(ROOT::Math::Mag2(massTracker)!=Ntrks) count--;
+    }
+    count++;
   }
   
-  //check if the population meets all the requirement, if not regenerate
+  //calculate and record the vertex time and chi2 of the population
+  vector<double> populationChi2;
+  populationChi2.reserve(populationSize_);
+  vector<double> populationChi2;
+  populationChi2.reserve(populationSize_);
+  
 
 
-  //choose three mass vectors
-  std::vector<int> parent=population[1];
-
-  //make v_trackInfo with PID based on the parent vector 
-  std::vector<std::vector<double>> v_trackInfowPID;
+  //----------Offspring generation----------
+  //randomly generate three distinct ids
+  int ids[3]={-1,-1,-1};
+  gen3Id(ids);
+  
+  //calculate the mutant vector and get it in range
+  pidVector v_mutant=populationVector[ids[0]]+populationVector[ids[1]]-populationVector[ids[2]];
   for(int i=0;i<Ntrks;i++){
-    v_trackInfowPID.emplace_back();
-    auto&trkwpid = v_trackInfowPID.back();
-    int tmp_pid=parent[N];
-    double tmp_w=v_trackInfo[i].weight(tmp_pid);
-    double tmp_t0=v_trackInfo[i].trkTimeHyp(tmp_pid);
-    double tmp_sigma=v_trackInfo[i].trkTimeErrorHyp(tmp_pid);
-    trkwpid={tmp_w,tmp_t0,tmp_sigma};     
+    v_mutant[i]=getInRange(v_mutant[i]);
   }
 
-  double chi2_parent=calcChi2(v_trackInfowPID);
+  //----------Natural selection----------
+  //calcualte vtx time and chi2 of v_mutant
+  double sum_mut=.0;
+  double wgt_mut=.0;
+  for(int i=0;i<Ntrks;i++){
+    int tmp_pid=v_mutant[i];
+    sum_mut+=v_trackInfo[i].weight(tmp_pid)*v_trackInfo[i].trkTimeHyp(tmp_pid);
+    wgt_mut+=v_trackInfo[i].weight(tmp_pid);
+  }
+  double tv_mut=sum_mut/wgt_mut;
+  
+  double chi2_mut=.0;
+  for(int i=0;i<Ntrks;i++){
+    int tmp_pid=v_mutant[i];
+    chi2_mut+=v_trackInfo[i].weight(tmp_pid)*pow(v_trackInfo[i].trkTimeHyp(tmp_pid)-tv_mut,2);
+  }
 
-  std::vector<double> populationChi2;
-  populationChi2.reserve(populationSize_);
+  //calcualte vtx time and chi2 of v_parent
+  double sum_parent=.0;
+  double wgt_parent=.0;
+  for(int i=0;i<Ntrks;i++){
+    int tmp_pid=populationVector[ids[0]];
+    sum_parent+=v_trackInfo[i].weight(tmp_pid)*v_trackInfo[i].trkTimeHyp(tmp_pid);
+    wgt_parent+=v_trackInfo[i].weight(tmp_pid);
+  }
+  double tv_parent=sum_parent/wgt_parent;
+  
+  double chi2_parent=.0;
+  for(int i=0;i<Ntrks;i++){
+    int tmp_pid=populationVector[ids[0]]
+    chi2_parent+=v_trackInfo[i].weight(tmp_pid)*pow(v_trackInfo[i].trkTimeHyp(tmp_pid)-tv_parent,2);
+  }
+  
+
   //create offspring generation 
 
   //natural (Darwinian) selection 
@@ -175,28 +248,26 @@ bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
   return false;
 }
 
-double VertexTimeAlgorithmADEGA::solveVertexTime(std::vector<std::vector<double>>& trackvector){
-  double sum=0.0;
-  double wsum=0.0;
-  for(const auto& trk: trackvector){
-    double wgt=trk[0];
-    double t0=trk[1];
-    double sigmat0=trk[2];
-    sum+=wgt*t0;
-    wsum+=wgt;
+void VertexTimeAlgorithmADEGA::gen3Id(int (&ids)[3]){
+  TRandom3 mRan_tmp(123);//fix random seed
+  //randomly choose a parent vector
+  int parent_id=mRan_tmp.Integer(populationSize_);
+  ids[0]=parent_id;
+  //randomly choose two distinct vectors that are different from the parent vector.
+  int delta_v_id1=mRan_tmp.Integer(populationSize_);
+  while(delta_v_id1==parent_id){
+    delta_v_id1=mRan_tmp.Integer(populationSize_);
   }
-  double tv=sum/wsum;
-  return tv;
+  ids[1]=delta_v_id1;
+  int delta_v_id2=mRan_tmp.Integer(populationSize_);
+  while(delta_v_id2==delta_v_id1||delta_v_id2==parent_id){
+    delta_v_id2=mRan_tmp.Integer(populationSize_);
+  }
+  ids[2]=delta_v_id2;
 }
 
-double VertexTimeAlgorithmADEGA::calcChi2(std::vector<std::vector<double>>& trackvector,double tv){
-  double chi2=0.0;
-  for(const auto& trk: trackvector){
-    double wgt=trk[0];
-    double t0=trk[1];
-    double sigmat0=trk[2];
-    chi2+=wgt*(t0-tv)*(t0-tv);
-  }
-  
-  return chi2;
+int VertexTimeAlgorithmADEGA::getInRange(int pid){
+  if(pid>Nm_-1) return Nm_-1;
+  else if(pid<0) return 0;
+  else return pid;
 }
