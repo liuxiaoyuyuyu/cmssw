@@ -97,6 +97,7 @@ bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
 
   auto const vtxTime_init = vtxTime;
   auto const vtxTimeError_init = vtxTimeError;
+  const int max_steps=1000;
 
   TRandom3 mRan(123);//fix the random seed
 
@@ -187,63 +188,108 @@ bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
     }
     count++;
   }
-  
+   
   //calculate and record the vertex time and chi2 of the population
-  vector<double> populationChi2;
-  populationChi2.reserve(populationSize_);
-  vector<double> populationChi2;
-  populationChi2.reserve(populationSize_);
-  
+  double population_chi2[populationSize_];
+  double population_tv[populationSize_];
+  double population_sigmatv[populationSize_];
 
+  for(int i=0;i<populationSize_;i++){
+    double sum_parent=.0;
+    double sumw2sigma2_parent=.0;
+    double wgt_parent=.0;
+    for(int j=0;j<Ntrks;j++){
+      int tmp_pid=populationVector[i][j];
+      sum_parent+=v_trackInfo[j].weight(tmp_pid)*v_trackInfo[j].trkTimeHyp(tmp_pid);
+      sumw2sigma2_parent+=pow(v_trackInfo[j].weight(tmp_pid),2)*pow(v_trackInfo[j].trkTimeErrorHyp(tmp_pid),2);
+      wgt_parent+=v_trackInfo[j].weight(tmp_pid);
+    }
+    double tv_parent=sum_parent/wgt_parent;
+    double sigmatv_parent=sqrt(sumw2sigma2_parent)/wgt_parent;
+    population_tv[i]=tv_parent;
+    population_sigmatv[i]=sigmatv_parent;
 
-  //----------Offspring generation----------
-  //randomly generate three distinct ids
-  int ids[3]={-1,-1,-1};
-  gen3Id(ids);
-  
-  //calculate the mutant vector and get it in range
-  pidVector v_mutant=populationVector[ids[0]]+populationVector[ids[1]]-populationVector[ids[2]];
-  for(int i=0;i<Ntrks;i++){
-    v_mutant[i]=getInRange(v_mutant[i]);
-  }
-
-  //----------Natural selection----------
-  //calcualte vtx time and chi2 of v_mutant
-  double sum_mut=.0;
-  double wgt_mut=.0;
-  for(int i=0;i<Ntrks;i++){
-    int tmp_pid=v_mutant[i];
-    sum_mut+=v_trackInfo[i].weight(tmp_pid)*v_trackInfo[i].trkTimeHyp(tmp_pid);
-    wgt_mut+=v_trackInfo[i].weight(tmp_pid);
-  }
-  double tv_mut=sum_mut/wgt_mut;
-  
-  double chi2_mut=.0;
-  for(int i=0;i<Ntrks;i++){
-    int tmp_pid=v_mutant[i];
-    chi2_mut+=v_trackInfo[i].weight(tmp_pid)*pow(v_trackInfo[i].trkTimeHyp(tmp_pid)-tv_mut,2);
-  }
-
-  //calcualte vtx time and chi2 of v_parent
-  double sum_parent=.0;
-  double wgt_parent=.0;
-  for(int i=0;i<Ntrks;i++){
-    int tmp_pid=populationVector[ids[0]];
-    sum_parent+=v_trackInfo[i].weight(tmp_pid)*v_trackInfo[i].trkTimeHyp(tmp_pid);
-    wgt_parent+=v_trackInfo[i].weight(tmp_pid);
-  }
-  double tv_parent=sum_parent/wgt_parent;
-  
-  double chi2_parent=.0;
-  for(int i=0;i<Ntrks;i++){
-    int tmp_pid=populationVector[ids[0]]
-    chi2_parent+=v_trackInfo[i].weight(tmp_pid)*pow(v_trackInfo[i].trkTimeHyp(tmp_pid)-tv_parent,2);
+    double chi2_parent=.0;
+    for(int j=0;j<Ntrks;j++){
+      int tmp_pid=populationVector[i][j];
+      chi2_parent+=v_trackInfo[j].weight(tmp_pid)*pow(v_trackInfo[j].trkTimeHyp(tmp_pid)-tv_parent,2);
+    }
+    population_chi2[i]=chi2_parent;
   }
   
+  //make a map of population index and chi2
+  //from now on, if solution i in the population gets updated, 
+  //populationVector[i], population_tv[i], population_chi2[i] all get updated.
+  //Also, index i get mapped to a new chi2 
+  vector<pair<int, double>> popindex_chi2_pairs;
+  for(int i=0;i<populationSize_;i++){
+    popindex_chi2_pairs.push_back(pair<int, double>{i,population_chi2[i]});
+  }
 
-  //create offspring generation 
+  //For now, set the derminating criterion to the number of iterations.
+  int nstep = 0;
+  //===Iteration starts===
+  while((nstep++)<max_steps){
+    //----------Offspring generation----------
+    //randomly generate three distinct ids
+    int munique=0;
+    while(!munique){
+      int ids[3]={-1,-1,-1};
+      gen3Id(ids);
+      
+      //calculate the mutant vector and get it in range
+      pidVector v_mutant=populationVector[ids[0]]+populationVector[ids[1]]-populationVector[ids[2]];
+      for(int i=0;i<Ntrks;i++){
+        v_mutant[i]=getInRange(v_mutant[i]);
+      }
+      munique=1;
+      for(int i=0;i<populationSize_;i++){
+        if(v_mutant==populationVector[i]){
+          munique=0;
+          break;
+        }
+      }
+    }
 
-  //natural (Darwinian) selection 
+    //----------Natural selection----------
+    //calcualte vtx time and chi2 of v_mutant
+    double sum_mut=.0;
+    double sumw2sigma2_mut=.0;
+    double wgt_mut=.0;
+    for(int i=0;i<Ntrks;i++){
+      int tmp_pid=v_mutant[i];
+      sum_mut+=v_trackInfo[i].weight(tmp_pid)*v_trackInfo[i].trkTimeHyp(tmp_pid);
+      sumw2sigma2_mut+=pow(v_trackInfo[i].weight(tmp_pid),2)*pow(v_trackInfo[i].trkTimeErrorHyp(tmp_pid),2);
+      wgt_mut+=v_trackInfo[i].weight(tmp_pid);
+    }
+    double tv_mut=sum_mut/wgt_mut;
+    double sigmatv_mut=sqrt(sumw2sigma2_mut)/wgt_mut;
+    
+    double chi2_mut=.0;
+    for(int i=0;i<Ntrks;i++){
+      int tmp_pid=v_mutant[i];
+      chi2_mut+=v_trackInfo[i].weight(tmp_pid)*pow(v_trackInfo[i].trkTimeHyp(tmp_pid)-tv_mut,2);
+    }
+
+    //compare chi2_mut with chi2_parent.
+    if(chi2_mut<population_chi2[ids[0]]){
+      populationVector[ids[0]]=v_mutant;
+      population_tv[ids[0]]=tv_mut;
+      population_chi2[ids[0]]=chi2_mut;
+      population_sigmatv[ids[0]]=sigmatv_mut;
+      vector<pair<int,double>>::iterator it;
+      it=find_if(popindex_chi2_pairs.begin(), popindex_chi2_pairs.end(),[ids[0]](const auto& p){return p.first==ids[0];});
+      (*it).second=population_chi2[ids[0]];
+    }
+
+  }//===Iteration ends===
+    
+  sort(popindex_chi2_pairs.begin(),popindex_chi2_pairs.end(),[](auto&a, auto &b){
+      return a.second<b.second;
+  });
+  int popindex_chi2min=(*popindex_chi2_pairs.begin()).first;
+  vtxTime=population_tv[popindex_chi2min];
+  vtxTimeError=population_sigmatv[popindex_chi2min];
 
   return false;
 }

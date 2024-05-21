@@ -22,7 +22,7 @@ public:
 protected:
   struct TrackInfo {
     double weight[3];
-    double trkTimeErrorHyp[3];//not useful after modifying "weight" 
+    double trkTimeErrorHyp[3]; 
     double trkTimeHyp[3];
   };
 
