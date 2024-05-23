@@ -26,8 +26,8 @@ protected:
     double trkTimeHyp[3];
   };
 
-  void gen3Id(int (&ids)[3]);
-  int getInRange(int pid);
+  void gen3Id(int (&ids)[3]) const;
+  int getInRange(int pid) const;
 
   edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDTimeToken_;
   edm::EDGetTokenT<edm::ValueMap<float>> const trackMTDTimeErrorToken_;
