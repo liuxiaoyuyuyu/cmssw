@@ -149,8 +149,7 @@ bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
   }//End looping over tracks
   
   //----------Initiate the population of solution vectors----------
-  int Ntrks_tmp=vtx.originalTracks().size();
-  int const Ntrks=Ntrks_tmp;
+  int Ntrks=v_trackInfo.size();
   
   //Add protection for population<=Nm^Ntrks, where Nm is the possible number of particle spieces.
   if(populationSize_>pow(Nm_,Ntrks)){
