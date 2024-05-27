@@ -49,6 +49,7 @@ protected:
 
   int const populationSize_;
   int const Nm_;
+  TRandoms3* mRan;
 
   edm::ValueMap<float> trackMTDTimes_;
   edm::ValueMap<float> trackMTDTimeErrors_;
