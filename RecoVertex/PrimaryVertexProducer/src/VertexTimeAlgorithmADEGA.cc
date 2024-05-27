@@ -86,6 +86,7 @@ void VertexTimeAlgorithmADEGA::setEvent(edm::Event& iEvent, edm::EventSetup cons
   trackMTDSigmaTofPi_ = iEvent.get(trackMTDSigmaTofPiToken_);
   trackMTDSigmaTofK_ = iEvent.get(trackMTDSigmaTofKToken_);
   trackMTDSigmaTofP_ = iEvent.get(trackMTDSigmaTofPToken_);
+  mRan=new TRandoms3();
 }
 
 bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
@@ -98,8 +99,6 @@ bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
   auto const vtxTime_init = vtxTime;
   auto const vtxTimeError_init = vtxTimeError;
   const int max_steps=1000;
-
-  mRan=new TRandoms3();
 
   vector<TrackInfo> v_trackInfo;
   v_trackInfo.reserve(vtx.originalTracks().size());
