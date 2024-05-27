@@ -99,7 +99,7 @@ bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
   auto const vtxTimeError_init = vtxTimeError;
   const int max_steps=1000;
 
-  TRandom3 mRan(123);//fix the random seed
+  mRan=new TRandoms3();
 
   vector<TrackInfo> v_trackInfo;
   v_trackInfo.reserve(vtx.originalTracks().size());
@@ -165,7 +165,7 @@ bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
   while(count<populationSize_){
     populationVector[count].clear();
     for(int j=0;j<Ntrks;j++){
-      int tmp=mRan.Integer(Nm_);//random integer in [0,2]
+      int tmp=mRan->Integer(Nm_);//random integer in [0,2]
       populationVector[count].push_back(tmp);
       if(count==0){
         massTracker.push_back(0);
@@ -247,7 +247,7 @@ bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
       gen3Id(ids);
       v_mutant.clear();
       //calculate the mutant vector and get it in range
-      for(auto &element:populationVector[0]){
+      for(int i=0;i<populationVector[0].size();i++){
         double tmp=populationVector[ids[0]][element]+populationVector[ids[1]][element]-populationVector[ids[2]][element];
         v_mutant.push_back(tmp);
       }
@@ -307,19 +307,19 @@ bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
 }
 
 void VertexTimeAlgorithmADEGA::gen3Id(int (&ids)[3]) const {
-  TRandom3 mRan_tmp(123);//fix random seed
+  //TRandom3 mRan_tmp(123);//fix random seed
   //randomly choose a parent vector
-  int parent_id=mRan_tmp.Integer(populationSize_);
+  int parent_id=mRan->Integer(populationSize_);
   ids[0]=parent_id;
   //randomly choose two distinct vectors that are different from the parent vector.
-  int delta_v_id1=mRan_tmp.Integer(populationSize_);
+  int delta_v_id1=mRan->Integer(populationSize_);
   while(delta_v_id1==parent_id){
-    delta_v_id1=mRan_tmp.Integer(populationSize_);
+    delta_v_id1=mRan->Integer(populationSize_);
   }
   ids[1]=delta_v_id1;
-  int delta_v_id2=mRan_tmp.Integer(populationSize_);
+  int delta_v_id2=mRan->Integer(populationSize_);
   while(delta_v_id2==delta_v_id1||delta_v_id2==parent_id){
-    delta_v_id2=mRan_tmp.Integer(populationSize_);
+    delta_v_id2=mRan->Integer(populationSize_);
   }
   ids[2]=delta_v_id2;
 }
