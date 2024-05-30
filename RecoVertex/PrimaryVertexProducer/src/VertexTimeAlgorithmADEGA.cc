@@ -375,7 +375,7 @@ bool VertexTimeAlgorithmADEGA::vertexTime(float& vtxTime,
       }
       */
       //LOG << "vertexTimeFromTracks:   iteration=" << nstep <<" chi2_min/Ntrk="<<popindex_chi2_pairs[0].second/(double)Ntrks;
-      nstep++;
+      //nstep++;
     }//=== Iteration ends===
      
     int popindex_chi2min=(*popindex_chi2_pairs.begin()).first;
